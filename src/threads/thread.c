@@ -95,12 +95,14 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init(&wait_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  initial_thread->time_to_sleep = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -136,6 +138,8 @@ thread_tick (void)
 #endif
   else
     kernel_ticks++;
+
+  thread_awake();
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -205,6 +209,36 @@ thread_create (const char *name, int priority,
   thread_unblock (t);
 
   return tid;
+}
+
+/*
+ * put the current thread to sleep for $ticks
+ * util wake up by thread_awake().
+ * */
+void thread_sleep(int64_t ticks) 
+{
+    if (ticks <= 0) return;
+    struct thread *t = thread_current();
+    t->time_to_sleep = ticks;
+    list_push_back(&wait_list, &t->wait_elem);
+    thread_block();
+}
+
+/*
+ * try to awake all sleeping threads.
+ * interrupts must be turned off.
+ * */
+void thread_awake(void)
+{
+    struct list_elem *e;
+    ASSERT(intr_get_level() == INTR_OFF);
+    for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e)) {
+        struct thread *t = list_entry(e, struct thread, wait_elem);
+        if (--t->time_to_sleep == 0) {
+            list_remove(&t->wait_elem);
+            thread_unblock(t);
+        }
+    }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -466,6 +500,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->time_to_sleep = 0;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
