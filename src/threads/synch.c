@@ -186,6 +186,7 @@ lock_init (struct lock *lock)
   ASSERT (lock != NULL);
 
   lock->holder = NULL;
+  lock->priority = PRI_MIN;
   sema_init (&lock->semaphore, 1);
 }
 
@@ -200,8 +201,6 @@ lock_init (struct lock *lock)
 void
 lock_acquire (struct lock *lock)
 {
-
-  printf("lock acquiring\n");
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
@@ -213,11 +212,10 @@ lock_acquire (struct lock *lock)
   // require lock
   t->wait_lock = lock;
   if (cur_holder == NULL) {
-    lock->priority = t->priority;
-    printf("no holder\n");
+    cur_lock->priority = t->priority;
   }
+  // priority donation
   while (cur_holder != NULL && cur_holder->priority < t->priority) {
-    printf("waiting && donating\n");
     thread_donate_priority(cur_holder, t->priority);
     if (cur_lock->priority < t->priority) {
         cur_lock->priority = t->priority;
@@ -227,15 +225,14 @@ lock_acquire (struct lock *lock)
     cur_holder = cur_lock->holder;
   }
 
-  printf("waiting\n");
   sema_down (&lock->semaphore);
-  printf("success\n");
   // already acquired
-  t = thread_current();
-  t->wait_lock = NULL;
   lock->holder = t;
+  t->wait_lock = NULL;
+  if (lock->priority < t->priority) {
+      lock->priority = t->priority;
+  }
   list_insert_ordered(&t->locks, &lock->lock_elem, cmp_greater_lock_priority, NULL);
-  printf("lock acquired\n");
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -274,24 +271,18 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 
-  printf("lock releasing\n");
-
   list_remove(&lock->lock_elem);
-  printf("lock list released\n");
   if (list_empty(&t->locks)) {
       // no donates
       // recover priority
       thread_donate_priority(t, t->old_priority);
-      printf("recover priority\n");
   } else {
       // donated
       // sort the list to find max priority
       list_sort(&t->locks, cmp_greater_lock_priority, NULL);
-      thread_donate_priority(t, list_entry(list_pop_front(&t->locks), struct lock, lock_elem)->priority);
-      printf("find the max pri\n");
+      thread_donate_priority(t, list_entry(list_front(&t->locks), struct lock, lock_elem)->priority);
   }
 
-  printf("lock released\n");
 }
 
 /* Returns true if the current thread holds LOCK, false
