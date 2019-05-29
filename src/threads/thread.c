@@ -402,6 +402,7 @@ thread_set_priority (int new_priority)
 {
     struct thread *t = thread_current();
     if (t->priority == t->old_priority) { // case of NO donation
+        // TODO this condition may cause bug
         t->priority = t->old_priority = new_priority;
     } else { // case of donation
         t->old_priority = new_priority;
