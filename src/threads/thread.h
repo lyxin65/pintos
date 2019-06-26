@@ -23,6 +23,9 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define NICE_MIN -20                    /* Lowest niceness. */
+#define NICE_DEFAULT 0                  /* Default niceness. */
+#define NICE_MAX 20                    /* Highest niceness. */
 
 /* A kernel thread or user process.
 
@@ -100,6 +103,9 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    int nice;
+    int recent_cpu;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -142,6 +148,12 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+
+void calc_load_avg(void);
+void thread_calc_recent_cpu(void);
+void thread_calc_priority(void);
+void thread_calc_recent_cpu_all(void);
+void thread_calc_priority_all(void);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

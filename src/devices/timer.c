@@ -175,6 +175,20 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  if (thread_mlfqs) {
+      struct thread *t = thread_current();
+      if (t->status == THREAD_RUNNING) {
+          t->recent_cpu = fp_add_int(t->recent_cpu, 1);
+      }
+      if (ticks % TIMER_FREQ == 0) {
+          calc_load_avg();
+          thread_calc_recent_cpu_all();
+      }
+      if (ticks % 4 == 0) {
+          thread_calc_priority_all();
+      }
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
