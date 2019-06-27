@@ -187,6 +187,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       }
       if (ticks % 4 == 0) {
           thread_calc_priority_all();
+         // thread_print_pri();
       }
   }
 }

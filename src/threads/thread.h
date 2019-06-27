@@ -152,6 +152,8 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
+void thread_donate_priority(struct thread *, int);
+
 void calc_load_avg(void);
 void thread_calc_recent_cpu(void);
 void thread_calc_priority(void);
