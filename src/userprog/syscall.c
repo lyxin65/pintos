@@ -245,14 +245,14 @@ int sys_read(int fd_num, void *buffer, unsigned size)
   if (fd_num == 1)
     return -1;
 
-  int size;
+  int filesize;
   struct file_descriptor *fd = get_fd(thread_current(), fd_num);
   if (!fd)
     return -1;
   lock_acquire(&lock_for_fs);
-  size = file_read(fd->file, buffer, size);
+  filesize = file_read(fd->file, buffer, size);
   lock_release(&lock_for_fs);
-  return size;
+  return filesize;
 }
 
 int sys_write(int fd_num, const void *buffer, unsigned size)
