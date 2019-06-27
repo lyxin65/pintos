@@ -151,10 +151,10 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
   //yn 
-  struct thread *current = thread_current ();
+  struct thread *cur = thread_current ();
   if (fault_addr == NULL || !is_user_vaddr(fault_addr))
     {
-      current->exitcode = -1;
+      cur->exitcode = -1;
       thread_exit ();
     }
    //

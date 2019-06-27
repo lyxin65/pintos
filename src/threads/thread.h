@@ -112,6 +112,11 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     int exitcode;
 
+    int pro_child_number;
+    int pro_child_arr_capacity;  // children's array capacity
+    tid_t * pro_child_pro;  //children's processes' tid.
+
+    /* Owned by userprog/syscall.c. */
     struct list file_descriptors;
  #endif
 

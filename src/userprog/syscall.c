@@ -12,7 +12,6 @@
 #include "threads/malloc.h"
 #include "lib/kernel/list.h"
 
-
 //what to do :
 //wait \exev \boundary check
 
@@ -29,9 +28,8 @@ void syscall_init(void)
 }
 /* modified by YN  end*/
 
-
-
 /* modified by YN  begin*/
+void boundary_check(const void *uaddr);
 
 struct file_descriptor *get_fd(struct thread *t, int fd_num)
 {
@@ -57,6 +55,7 @@ struct file_descriptor *get_fd(struct thread *t, int fd_num)
 static int num_of_args(const char *esp, int args[])
 {
   int argc;
+  boundary_check(argc + 3); //maybe check all is a must
 
   int sys_num = *(int *)esp;
   switch (sys_num)
@@ -85,14 +84,14 @@ static int num_of_args(const char *esp, int args[])
   for (int i = 0; i < argc; ++i)
   {
     const int *addr = (const int *)(esp + 4 * i);
+    boundary_check(addr + 3);
     args[i] = *addr;
   }
   return argc;
 }
 
 //void sys_halt(void) NO_RETURN;
-//void sys_exit(int status) NO_RETURN;
-pid_t sys_exec(const char *file);
+pid_t sys_exec(const char *cmd_line);
 int sys_wait(pid_t pid);
 bool sys_create(const char *file, unsigned initial_size);
 bool sys_remove(const char *file);
@@ -103,6 +102,19 @@ int sys_write(int fd_num, const void *buffer, unsigned size);
 void sys_seek(int fd_num, unsigned position);
 unsigned sys_tell(int fd_num);
 void sys_close(int fd_num);
+void sys_exit(int status)
+{
+  thread_current()->exitcode = status;
+  thread_exit();
+}
+
+void boundary_check(const void *uaddr)
+{
+  struct thread *cur = thread_current();
+  if (uaddr == NULL || !is_user_vaddr(uaddr) ||
+      (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
+    sys_exit(-1);
+}
 
 static void
 syscall_handler(struct intr_frame *f UNUSED)
@@ -120,11 +132,11 @@ syscall_handler(struct intr_frame *f UNUSED)
   {
   case SYS_HALT:
     shutdown_power_off();
-    NOT_REACHED();
+    //NOT_REACHED(); //no it should not be written , it is a panic
     //dont no what it is, but it is used in lib/user/syscall
   case SYS_EXIT:
     sys_exit(args[1]);
-    NOT_REACHED();
+    //NOT_REACHED();
   case SYS_EXEC:
     f->eax = sys_exec((const char *)args[1]);
     return;
@@ -166,14 +178,23 @@ syscall_handler(struct intr_frame *f UNUSED)
 
 pid_t sys_exec(const char *cmd_line)
 {
+  boundary_check(cmd_line + 3);
+  lock_acquire(&lock_for_fs);
+  pid_t pid = process_execute(cmd_line);
+  lock_release(&lock_for_fs);
+  if (pid == TID_ERROR)
+    return -1;
+  return pid;
 }
 
 int sys_wait(pid_t pid)
 {
+  return process_wait(pid);
 }
 
 bool sys_create(const char *file, unsigned initial_size)
 {
+  boundary_check(file);
   lock_acquire(&lock_for_fs);
   bool success = filesys_create(file, initial_size);
   lock_release(&lock_for_fs);
@@ -182,6 +203,7 @@ bool sys_create(const char *file, unsigned initial_size)
 
 bool sys_remove(const char *file)
 {
+  boundary_check(file);
   lock_acquire(&lock_for_fs);
   bool success = filesys_remove(file);
   lock_release(&lock_for_fs);
@@ -190,6 +212,7 @@ bool sys_remove(const char *file)
 
 int sys_open(const char *file)
 {
+  boundary_check(file);
   struct file *file_open;
   struct file_descriptor *fd = malloc(sizeof(struct file_descriptor)); //it shows can't find the definition ???
   if (!fd)                                                             //open failed
@@ -206,7 +229,7 @@ int sys_open(const char *file)
   fd->file = file_open;
   struct list *fd_list = &thread_current()->file_descriptors;
   if (list_empty(fd_list))
-    fd->num = 2; //or 3? not sure
+    fd->num = 3; //2 for stderr, zwt says
   else
     fd->num = (list_entry(list_back(fd_list), struct file_descriptor, elem)->num) + 1;
   list_push_back(fd_list, &fd->elem);
@@ -227,8 +250,10 @@ int sys_filesize(const int fd_num)
 
 int sys_read(int fd_num, void *buffer, unsigned size)
 {
-  if (fd_num == 0) //there should be a enum that declare the stdin and out
-                   // but I dont find it yet
+  boundary_check(buffer);
+  boundary_check((uint64_t *)buffer + size - 1);
+  if (fd_num == STDIN_FILENO) //there should be a enum that declare the stdin and out
+                              // but I dont find it yet
   {
     uint8_t *udst = (uint8_t *)buffer;
     for (unsigned i = 0; i < size; ++i)
@@ -242,7 +267,7 @@ int sys_read(int fd_num, void *buffer, unsigned size)
     return size;
   }
 
-  if (fd_num == 1)
+  if (fd_num == STDOUT_FILENO)
     return -1;
 
   int filesize;
@@ -257,14 +282,15 @@ int sys_read(int fd_num, void *buffer, unsigned size)
 
 int sys_write(int fd_num, const void *buffer, unsigned size)
 {
-
-  if (fd_num == 0)
+  boundary_check(buffer);
+  boundary_check((uint64_t *)buffer + size - 1);
+  if (fd_num == STDIN_FILENO)
   {
     return -1;
   }
-  if (fd_num == 1)
+  if (fd_num == STDOUT_FILENO)
   {
-    //how to write it ....
+    putbuf((char *)buffer, size);
     return size;
   }
 
