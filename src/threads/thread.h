@@ -109,7 +109,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-#endif
+    int exitcode;
+
+    struct list file_descriptors;
+ #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
