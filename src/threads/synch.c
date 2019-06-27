@@ -288,6 +288,7 @@ lock_release (struct lock *lock)
           // no donates
           // recover priority
               thread_donate_priority(t, t->old_priority);
+              t->donated = false;
       } else {
           // sort the list to find max priority, why need sort?
          // if (!is_thread(t)) {
