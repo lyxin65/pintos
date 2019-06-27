@@ -4,9 +4,9 @@
 //yn
 struct file_descriptor
 {
-    uint64_t fd; //0 stdin 1 stdout 2stderror(not asked)
+    uint64_t num; //0 stdin 1 stdout 2stderror(not asked)
     struct file* file;
-    
+    struct list_elem elem;
     /* data */
 };
 
