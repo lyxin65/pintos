@@ -96,8 +96,6 @@ static void calc_priority(struct thread *t, void *aux UNUSED) {
         if (t->priority > PRI_MAX) {
             t->priority = PRI_MAX;
         }
-      //  if (strcmp(t->name, "main") == 0)
-       //     printf("thread %s's pri = %d, rc = %d, nice = %d\n", t->name, t->priority, t->recent_cpu, t->nice);
     }
 }
 
@@ -226,6 +224,10 @@ thread_create (const char *name, int priority,
 
   /* Initialize thread. */
   init_thread (t, name, priority);
+  if (thread_mlfqs) {
+      t->nice = thread_get_nice();
+      t->recent_cpu = thread_get_recent_cpu();
+  }
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -325,9 +327,9 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered(&ready_list, &t->elem, cmp_greater_priority, NULL);
   t->status = THREAD_READY;
-  if (thread_current() != idle_thread && thread_current()->priority < t->priority) {
+ /* if (thread_current() != idle_thread && thread_current()->priority < t->priority) {
       thread_yield();
-  }
+  } */
   intr_set_level (old_level);
 }
 
@@ -377,11 +379,11 @@ thread_exit (void)
 
   /* release locks */
   struct thread *t = thread_current();
-  struct list_elem *e;
+ /* struct list_elem *e;
   for (e = list_begin(&t->locks); e != list_end(&t->locks); e = list_next(e)) {
     struct lock *l = list_entry(e, struct lock, lock_elem);
     lock_release(l);
-  }
+  }*/
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
@@ -393,6 +395,21 @@ thread_exit (void)
   NOT_REACHED ();
 }
 
+void thread_print_pri() {
+  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  printf("-----------------------------------\n");
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      printf("%s %d\n", t->name, (int)t->status);
+    }
+  printf("-----------------------------------\n");
+}
+
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void
@@ -402,6 +419,7 @@ thread_yield (void)
   enum intr_level old_level;
   
   if (intr_context ()) {
+    //  thread_print_pri();
       puts("fuck");
   }
   ASSERT (!intr_context ());
@@ -629,14 +647,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->wait_lock = NULL;
   list_init(&t->locks);
   t->time_to_sleep = 0;
-  if (thread_mlfqs) {
-      if (t == initial_thread) {
-          t->nice = 0;
-      } else {
-          t->nice = thread_current()->nice;
-      }
-      t->recent_cpu = 0;
-  }
+  t->nice = 0;
+  t->recent_cpu = 0;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();

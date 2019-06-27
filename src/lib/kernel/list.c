@@ -81,6 +81,11 @@ list_begin (struct list *list)
 struct list_elem *
 list_next (struct list_elem *elem)
 {
+#ifdef DEBUG
+    if (!is_head (elem) && !is_interior (elem)) {
+        puts("fuck");
+    }
+#endif
   ASSERT (is_head (elem) || is_interior (elem));
   return elem->next;
 }
