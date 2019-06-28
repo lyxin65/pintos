@@ -139,6 +139,13 @@ thread_init (void)
   initial_thread->time_to_sleep = 0;
   initial_thread->nice = NICE_DEFAULT;
   load_avg = 0;
+
+  #ifdef USERPROG
+      initial_thread->pro_child_number = 0;
+      initial_thread->pro_child_arr_capacity = 0;
+      initial_thread->pro_child_pro = NULL;
+      list_init (&initial_thread->file_descriptors);
+  #endif
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
