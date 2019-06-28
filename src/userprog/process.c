@@ -228,7 +228,8 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
-    while(true);
+  while (true)
+    ;
   //dont know if right
   struct thread *cur = thread_current();
   bool found = false;
@@ -300,6 +301,13 @@ void process_exit(void)
   for (int i = 0; i < cur->pro_child_number; ++i)
     erase_tid(cur->pro_child_pro[i]);
   lock_release(&table_lock);
+
+  /* Release file for the executable */
+  if (cur->executing_file)
+  {
+    file_allow_write(cur->executing_file);
+    file_close(cur->executing_file);
+  }
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -502,11 +510,15 @@ bool load(const char *file_name, void (**eip)(void), void **esp)
   /* Start address. */
   *eip = (void (*)(void))ehdr.e_entry;
 
+  /* Deny writes to executables. */
+  file_deny_write(file);
+  thread_current()->executing_file = file;
+
   success = true;
 
 done:
   /* We arrive here whether the load is successful or not. */
-  file_close(file);
+  //file_close(file);
   return success;
 }
 

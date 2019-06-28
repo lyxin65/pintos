@@ -35,7 +35,17 @@ void syscall_init(void)
 /* modified by YN  end*/
 
 /* modified by YN  begin*/
-void boundary_check(const void *uaddr);
+static void boundary_check(const uint8_t *uaddr);
+
+// in case of invalid memory access, fail and exit.
+static void fail_invalid_access(void) {
+  if (lock_held_by_current_thread(&lock_for_fs))
+    lock_release (&lock_for_fs);
+
+  sys_exit (-1);
+  NOT_REACHED();
+}
+
 
 struct file_descriptor *get_fd(struct thread *, int);
 
@@ -63,7 +73,7 @@ struct file_descriptor *get_fd(struct thread *t, int fd_num)
 static int num_of_args(const char *esp, int args[])
 {
   int argc;
-  boundary_check(esp + 3); //maybe check all is a must
+  boundary_check((const uint8_t*)(esp + 3)); //maybe check all is a must
 
   int sys_num = *(int *)esp;
   switch (sys_num)
@@ -92,7 +102,7 @@ static int num_of_args(const char *esp, int args[])
   for (int i = 0; i < argc; ++i)
   {
     const int *addr = (const int *)(esp + 4 * i);
-    boundary_check(addr + 3);
+    boundary_check((const uint8_t*)(addr + 3));
     args[i] = *addr;
   }
   return argc;
@@ -118,10 +128,9 @@ void sys_exit(int status)
 
 void boundary_check(const void *uaddr)
 {
-  struct thread *cur = thread_current();
-  if (uaddr == NULL || !is_user_vaddr(uaddr) ||
-      (pagedir_get_page(cur->pagedir, uaddr)) == NULL)
-    sys_exit(-1);
+  // check uaddr range or segfaults
+  if(get_user (uaddr) == -1)
+    fail_invalid_access();
 }
 
 static void
@@ -186,7 +195,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 
 pid_t sys_exec(const char *cmd_line)
 {
-  boundary_check(cmd_line + 3);
+  boundary_check((const uint8_t*)(cmd_line));
   lock_acquire(&lock_for_fs);
   pid_t pid = process_execute(cmd_line);
   lock_release(&lock_for_fs);
@@ -205,7 +214,7 @@ int sys_wait(pid_t pid)
 
 bool sys_create(const char *file, unsigned initial_size)
 {
-  boundary_check(file);
+  boundary_check((const uint8_t*)file);
   lock_acquire(&lock_for_fs);
   bool success = filesys_create(file, initial_size);
   lock_release(&lock_for_fs);
@@ -214,7 +223,7 @@ bool sys_create(const char *file, unsigned initial_size)
 
 bool sys_remove(const char *file)
 {
-  boundary_check(file);
+  boundary_check((const uint8_t*)file);
   lock_acquire(&lock_for_fs);
   bool success = filesys_remove(file);
   lock_release(&lock_for_fs);
@@ -223,7 +232,7 @@ bool sys_remove(const char *file)
 
 int sys_open(const char *file)
 {
-  boundary_check(file);
+  boundary_check((const uint8_t*)file);
   struct file *file_open;
   struct file_descriptor *fd = malloc(sizeof(struct file_descriptor)); //it shows can't find the definition ???
   if (!fd)                                                             //open failed
@@ -261,8 +270,8 @@ int sys_filesize(const int fd_num)
 
 int sys_read(int fd_num, void *buffer, unsigned size)
 {
-  boundary_check(buffer);
-  boundary_check((uint64_t *)buffer + size - 1);
+  boundary_check((const uint8_t*)buffer);
+  boundary_check((const uint8_t*)buffer + size - 1);
   if (fd_num == STDIN_FILENO) //stdio.h
   {
     uint8_t *udst = (uint8_t *)buffer;
@@ -292,8 +301,8 @@ int sys_read(int fd_num, void *buffer, unsigned size)
 
 int sys_write(int fd_num, const void *buffer, unsigned size)
 {
-  boundary_check(buffer);
-  boundary_check((uint64_t *)buffer + size - 1);
+  boundary_check((const uint8_t*)buffer);
+  boundary_check((const uint8_t*)buffer + size - 1);
   if (fd_num == STDIN_FILENO)
   {
     return -1;
