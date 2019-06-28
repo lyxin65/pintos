@@ -100,10 +100,24 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+/*modified by yn begin */
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-#endif
+    int exitcode;
+
+    int pro_child_number;
+    int pro_child_arr_capacity;  // children's array capacity
+    tid_t * pro_child_pro;  //children's processes' tid.
+
+    struct file *executing_file;        /* The executable file of associated process. */
+
+    /* Owned by userprog/syscall.c. */
+    struct list file_descriptors;
+
+ #endif
+ /*modified by yn end */
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
