@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 #include "threads/synch.h"
 #include "lib/syscall-nr.h"
@@ -42,7 +43,7 @@ size_t table_size;
 size_t table_capacity;
 static struct pro_entry **process_table;
 
-void process_table_init()
+static void process_table_init()
 {
   table_size = 0;
   table_capacity = 64;
@@ -50,13 +51,13 @@ void process_table_init()
   //(64 maybe too large)
   process_table = malloc(sizeof(struct pro_entry *) * table_capacity);
   ASSERT(process_table);
-  for (int i = 0; i < table_capacity; ++i)
+  for (int i = 0; i < (int)table_capacity; ++i)
     process_table[i] = NULL;
   lock_init(&table_lock);
   cond_init(&lock_cond);
 }
 
-int find_pro(tid_t tid)
+static int find_pro(tid_t tid)
 {
   ASSERT(tid >= 0);
   int i = tid % table_capacity;
@@ -70,7 +71,7 @@ int find_pro(tid_t tid)
   return i;
 }
 
-struct pro_entry *tid_to_process(tid_t tid)
+static struct pro_entry *tid_to_process(tid_t tid)
 {
   int i = find_pro(tid);
   return process_table[i];
@@ -98,10 +99,10 @@ static bool insert_pro(tid_t tid, struct pro_entry *entry)
     ASSERT(process_table);
     table_capacity *= 2;
     table_size = 0;
-    for (int i = 0; i < table_capacity; ++i)
+    for (int i = 0; i < (int)table_capacity; ++i)
       process_table[i] = NULL;
 
-    for (int i = 0; i < table_capacity / 2; ++i)
+    for (int i = 0; i < (int)table_capacity / 2; ++i)
     {
       if (old_process_table[i] == NULL)
         continue;
@@ -227,6 +228,7 @@ start_process(void *file_name_)
    does nothing. */
 int process_wait(tid_t child_tid UNUSED)
 {
+    while(true);
   //dont know if right
   struct thread *cur = thread_current();
   bool found = false;

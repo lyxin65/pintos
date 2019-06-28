@@ -396,7 +396,7 @@ thread_exit (void)
   schedule ();
   NOT_REACHED ();
 }
-
+/*
 void thread_print_pri() {
   struct list_elem *e;
 
@@ -411,7 +411,7 @@ void thread_print_pri() {
     }
   printf("-----------------------------------\n");
 }
-
+*/
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 void

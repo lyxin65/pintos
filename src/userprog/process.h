@@ -3,7 +3,10 @@
 
 #include "threads/thread.h"
 
-void process_init ();
+#define STATUS_ERROR -2
+#define STATUS_RUNNING -3
+
+void process_init (void);
 
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);

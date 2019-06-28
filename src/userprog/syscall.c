@@ -1,13 +1,17 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
+#include "devices/input.h"
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "user/syscall.h"
 
+#include "threads/vaddr.h"
 #include "devices/shutdown.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
+#include "userprog/pagedir.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
 #include "lib/kernel/list.h"
@@ -15,11 +19,13 @@
 //what to do :
 //wait \exev \boundary check
 
+struct lock lock_for_fs;
+static int get_user(const uint8_t *uaddr);
+static bool put_user(uint8_t *udst, uint8_t byte);
 static void syscall_handler(struct intr_frame *);
 
 /* modified by YN  begin*/
 //file_system_lock      must have only one threads in the file system at any time
-struct lock lock_for_fs;
 
 void syscall_init(void)
 {
@@ -30,6 +36,8 @@ void syscall_init(void)
 
 /* modified by YN  begin*/
 void boundary_check(const void *uaddr);
+
+struct file_descriptor *get_fd(struct thread *, int);
 
 struct file_descriptor *get_fd(struct thread *t, int fd_num)
 {
@@ -44,7 +52,7 @@ struct file_descriptor *get_fd(struct thread *t, int fd_num)
   while (e != list_end(fd_list))
   {
     struct file_descriptor *fd = list_entry(e, struct file_descriptor, elem);
-    if (fd->num == fd_num)
+    if ((int)fd->num == fd_num)
       return fd;
     e = list_next(e);
   }

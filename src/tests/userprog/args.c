@@ -4,6 +4,8 @@
    output. */
 
 #include "tests/lib.h"
+#include "userprog/syscall.h"
+//#include "userprog/process.h"
 
 int
 main (int argc, char *argv[]) 

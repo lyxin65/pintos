@@ -3,6 +3,7 @@
 
 #include <list.h>
 
+extern struct lock lock_for_fs;
 //yn
 struct file_descriptor
 {
@@ -13,6 +14,7 @@ struct file_descriptor
 };
 
 
+void sys_exit(int);
 
 void syscall_init (void);
 
