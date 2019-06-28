@@ -379,11 +379,13 @@ thread_exit (void)
 
   /* release locks */
   struct thread *t = thread_current();
- /* struct list_elem *e;
-  for (e = list_begin(&t->locks); e != list_end(&t->locks); e = list_next(e)) {
-    struct lock *l = list_entry(e, struct lock, lock_elem);
-    lock_release(l);
-  }*/
+  if (!thread_mlfqs) {
+      struct list_elem *e;
+      for (e = list_begin(&t->locks); e != list_end(&t->locks); e = list_next(e)) {
+          struct lock *l = list_entry(e, struct lock, lock_elem);
+          lock_release(l);
+      }
+  }
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us

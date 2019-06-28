@@ -96,7 +96,7 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
     struct list_elem wait_elem;         /* add for waiting list */
     struct list_elem lock_elem;         /* add for locks list */
-    int64_t time_to_sleep;              /* as above */
+    int64_t time_to_sleep;              /* add for timer sleep */
 
     struct lock *wait_lock;             /* add for priority donate */
     struct list locks;                   /* as above */
